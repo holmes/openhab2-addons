@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2017 by the respective copyright holders.
+ * Copyright (c) 2010-2019 by the respective copyright holders.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -22,6 +22,7 @@ import de.fh_zwickau.informatik.sensor.model.devices.Device;
 import de.fh_zwickau.informatik.sensor.model.devices.types.Battery;
 import de.fh_zwickau.informatik.sensor.model.devices.types.Doorlock;
 import de.fh_zwickau.informatik.sensor.model.devices.types.SensorBinary;
+import de.fh_zwickau.informatik.sensor.model.devices.types.SensorDiscrete;
 import de.fh_zwickau.informatik.sensor.model.devices.types.SensorMultilevel;
 import de.fh_zwickau.informatik.sensor.model.devices.types.SwitchBinary;
 import de.fh_zwickau.informatik.sensor.model.devices.types.SwitchControl;
@@ -65,14 +66,14 @@ public class ZWayDeviceStateConverter {
             }
         } else if (device instanceof SwitchRGBW) {
             return getColorState(device.getMetrics().getColor());
-        } else if (device instanceof SwitchToggle) {
-            // ?
         } else if (device instanceof Thermostat) {
             return getMultilevelState(level);
         } else if (device instanceof SwitchControl) {
             return getBinaryState(level.toLowerCase());
-        } else if (device instanceof ToggleButton) {
-            // TODO
+        } else if (device instanceof ToggleButton || device instanceof SwitchToggle) {
+            return getBinaryState(level.toLowerCase());
+        } else if (device instanceof SensorDiscrete) {
+            return getMultilevelState(level);
         }
 
         return UnDefType.UNDEF;
@@ -143,7 +144,6 @@ public class ZWayDeviceStateConverter {
     private static State getColorState(Color colorSwitchState) {
         if (colorSwitchState != null && colorSwitchState.getRed() != null && colorSwitchState.getGreen() != null
                 && colorSwitchState.getBlue() != null) {
-
             HSBType hsbType = HSBType.fromRGB(colorSwitchState.getRed(), colorSwitchState.getGreen(),
                     colorSwitchState.getBlue());
 

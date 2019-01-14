@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2017 by the respective copyright holders.
+ * Copyright (c) 2010-2019 by the respective copyright holders.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -41,9 +41,9 @@ import org.eclipse.smarthome.core.types.State;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.zoneminder.ZoneMinderConstants;
 import org.openhab.binding.zoneminder.ZoneMinderProperties;
-import org.openhab.binding.zoneminder.discovery.ZoneMinderDiscoveryService;
 import org.openhab.binding.zoneminder.internal.DataRefreshPriorityEnum;
 import org.openhab.binding.zoneminder.internal.config.ZoneMinderBridgeServerConfig;
+import org.openhab.binding.zoneminder.internal.discovery.ZoneMinderDiscoveryService;
 import org.osgi.framework.ServiceRegistration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,7 +79,7 @@ public class ZoneMinderServerBridgeHandler extends BaseBridgeHandler implements 
     /**
      * Logger
      */
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private ZoneMinderDiscoveryService discoveryService = null;
     private ServiceRegistration discoveryRegistration = null;
@@ -123,7 +123,7 @@ public class ZoneMinderServerBridgeHandler extends BaseBridgeHandler implements 
     private String channelCpuLoad = "";
     private String channelDiskUsage = "";
 
-    Boolean isInitialized = false;
+    private Boolean isInitialized = false;
 
     private IZoneMinderSession zoneMinderSession = null;
     private IZoneMinderConnectionInfo zoneMinderConnection = null;
@@ -131,107 +131,89 @@ public class ZoneMinderServerBridgeHandler extends BaseBridgeHandler implements 
     private ScheduledFuture<?> taskRefreshData = null;
     private ScheduledFuture<?> taskPriorityRefreshData = null;
 
-    private Runnable refreshDataRunnable = new Runnable() {
-        @Override
-        public void run() {
-            try {
-                boolean fetchDiskUsage = false;
+    private Runnable refreshDataRunnable = () -> {
+        try {
+            boolean fetchDiskUsage = false;
 
-                if (!isOnline()) {
-                    logger.debug("{}: Bridge '{}' is noit online skipping refresh", getLogIdentifier(), thing.getUID());
-                }
-
-                refreshCycleCount++;
-
-                int iMaxCycles;
-                boolean resetCount = false;
-                boolean doRefresh = false;
-
-                // Disk Usage is disabled
-                if (getBridgeConfig().getRefreshIntervalLowPriorityTask() == 0) {
-                    iMaxCycles = getBridgeConfig().getRefreshInterval();
-                    resetCount = true;
-                    doRefresh = true;
-
-                } else {
-                    iMaxCycles = getBridgeConfig().getRefreshIntervalLowPriorityTask() * 60;
-                    doRefresh = true;
-                    if ((refreshCycleCount * refreshFrequency) >= (getBridgeConfig().getRefreshIntervalLowPriorityTask()
-                            * 60)) {
-                        fetchDiskUsage = true;
-                        resetCount = true;
-
-                    }
-                }
-
-                logger.debug(
-                        "{}: Running Refresh data task count='{}', freq='{}', max='{}', interval='{}', intervalLow='{}'",
-                        getLogIdentifier(), refreshCycleCount, refreshFrequency, iMaxCycles,
-                        getBridgeConfig().getRefreshInterval(), getBridgeConfig().getRefreshIntervalLowPriorityTask());
-
-                if (doRefresh) {
-
-                    if (resetCount == true) {
-                        refreshCycleCount = 0;
-                    }
-
-                    logger.debug("{}: 'refreshDataRunnable()': (diskUsage='{}')", getLogIdentifier(), fetchDiskUsage);
-
-                    refreshThing(zoneMinderSession, fetchDiskUsage);
-                }
-
-            } catch (Exception exception) {
-                logger.error("{}: monitorRunnable::run(): Exception: {}", getLogIdentifier(), exception);
+            if (!isOnline()) {
+                logger.debug("{}: Bridge '{}' is noit online skipping refresh", getLogIdentifier(), thing.getUID());
             }
+
+            refreshCycleCount++;
+
+            int iMaxCycles;
+            boolean resetCount = false;
+            boolean doRefresh = false;
+
+            // Disk Usage is disabled
+            if (getBridgeConfig().getRefreshIntervalLowPriorityTask() == 0) {
+                iMaxCycles = getBridgeConfig().getRefreshInterval();
+                resetCount = true;
+                doRefresh = true;
+            } else {
+                iMaxCycles = getBridgeConfig().getRefreshIntervalLowPriorityTask() * 60;
+                doRefresh = true;
+                if ((refreshCycleCount * refreshFrequency) >= (getBridgeConfig().getRefreshIntervalLowPriorityTask()
+                        * 60)) {
+                    fetchDiskUsage = true;
+                    resetCount = true;
+                }
+            }
+
+            logger.debug(
+                    "{}: Running Refresh data task count='{}', freq='{}', max='{}', interval='{}', intervalLow='{}'",
+                    getLogIdentifier(), refreshCycleCount, refreshFrequency, iMaxCycles,
+                    getBridgeConfig().getRefreshInterval(), getBridgeConfig().getRefreshIntervalLowPriorityTask());
+
+            if (doRefresh) {
+                if (resetCount == true) {
+                    refreshCycleCount = 0;
+                }
+
+                logger.debug("{}: 'refreshDataRunnable()': (diskUsage='{}')", getLogIdentifier(), fetchDiskUsage);
+
+                refreshThing(zoneMinderSession, fetchDiskUsage);
+            }
+        } catch (Exception exception) {
+            logger.error("{}: monitorRunnable::run(): Exception: ", getLogIdentifier(), exception);
         }
     };
 
-    private Runnable refreshPriorityDataRunnable = new Runnable() {
+    private Runnable refreshPriorityDataRunnable = () -> {
+        try {
+            // Make sure priority updates is done
+            for (Thing thing : getThing().getThings()) {
+                try {
+                    if (thing.getThingTypeUID().equals(ZoneMinderConstants.THING_TYPE_THING_ZONEMINDER_MONITOR)) {
+                        Thing thingMonitor = thing;
 
-        @Override
-        public void run() {
-            try {
+                        ZoneMinderBaseThingHandler thingHandler = (ZoneMinderBaseThingHandler) thing.getHandler();
+                        if (thingHandler != null) {
 
-                // Make sure priority updates is done
-                for (Thing thing : getThing().getThings()) {
-                    try {
-
-                        if (thing.getThingTypeUID().equals(ZoneMinderConstants.THING_TYPE_THING_ZONEMINDER_MONITOR)) {
-                            Thing thingMonitor = thing;
-
-                            ZoneMinderBaseThingHandler thingHandler = (ZoneMinderBaseThingHandler) thing.getHandler();
-                            if (thingHandler != null) {
-
-                                if (thingHandler.getRefreshPriority() == DataRefreshPriorityEnum.HIGH_PRIORITY) {
-                                    logger.debug(String.format("[MONITOR-%s]: RefreshPriority is High Priority",
-                                            thingHandler.getZoneMinderId()));
-                                    thingHandler.refreshThing(zoneMinderSession, DataRefreshPriorityEnum.HIGH_PRIORITY);
-                                }
-                            } else {
-                                logger.debug(String.format(
-                                        "[MONITOR]: refreshThing not called for monitor, since thingHandler is 'null'"));
-
+                            if (thingHandler.getRefreshPriority() == DataRefreshPriorityEnum.HIGH_PRIORITY) {
+                                logger.debug("[MONITOR-{}]: RefreshPriority is High Priority",
+                                        thingHandler.getZoneMinderId());
+                                thingHandler.refreshThing(zoneMinderSession, DataRefreshPriorityEnum.HIGH_PRIORITY);
                             }
+                        } else {
+                            logger.debug(
+                                    "[MONITOR]: refreshThing not called for monitor, since thingHandler is 'null'");
                         }
-
-                    } catch (NullPointerException ex) {
-                        // This isn't critical (unless it comes over and over). There seems to be a bug so that a
-                        // null
-                        // pointer exception is coming every now and then.
-                        // HAve to find the reason for that. Until thenm, don't Spamm
-                        logger.error(
-                                "[MONITOR]: Method 'refreshThing()' for Bridge failed for thing='{}' - Exception='{}'",
-                                thing.getUID(), ex);
-                    } catch (Exception ex) {
-                        logger.error(
-                                "[MONITOR]: Method 'refreshThing()' for Bridge failed for thing='{}' - Exception='{}'",
-                                thing.getUID(), ex);
                     }
+                } catch (NullPointerException ex) {
+                    // This isn't critical (unless it comes over and over). There seems to be a bug so that a
+                    // null
+                    // pointer exception is coming every now and then.
+                    // HAve to find the reason for that. Until thenm, don't Spamm
+                    logger.error("[MONITOR]: Method 'refreshThing()' for Bridge failed for thing='{}' - Exception: ",
+                            thing.getUID(), ex);
+                } catch (Exception ex) {
+                    logger.error("[MONITOR]: Method 'refreshThing()' for Bridge failed for thing='{}' - Exception: ",
+                            thing.getUID(), ex);
                 }
-
-            } catch (Exception exception) {
-                logger.error("[MONITOR]: monitorRunnable::run(): Exception: ", exception);
             }
+        } catch (Exception exception) {
+            logger.error("[MONITOR]: monitorRunnable::run(): Exception: ", exception);
         }
     };
 
@@ -255,7 +237,6 @@ public class ZoneMinderServerBridgeHandler extends BaseBridgeHandler implements 
     @Override
     public void initialize() {
         logger.debug("[BRIDGE]: About to initialize bridge " + ZoneMinderConstants.BRIDGE_ZONEMINDER_SERVER);
-        super.initialize();
         try {
             updateStatus(ThingStatus.OFFLINE);
             logger.info("BRIDGE: ZoneMinder Server Bridge Handler Initialized");
@@ -440,7 +421,7 @@ public class ZoneMinderServerBridgeHandler extends BaseBridgeHandler implements 
                         zoneMinderServerProxy.getHttpResponseMessage());
 
             } catch (FailedLoginException | ZoneMinderUrlNotFoundException | IOException ex) {
-                logger.error("{}: Exception thrown in call to ZoneMinderHostLoad ('{}')", getLogIdentifier(), ex);
+                logger.error("{}: Exception thrown in call to ZoneMinderHostLoad: ", getLogIdentifier(), ex);
             }
 
             if (hostLoad == null) {
@@ -463,7 +444,7 @@ public class ZoneMinderServerBridgeHandler extends BaseBridgeHandler implements 
                             zoneMinderServerProxy.getHttpUrl(), zoneMinderServerProxy.getHttpResponseCode(),
                             zoneMinderServerProxy.getHttpResponseMessage());
                 } catch (Exception ex) {
-                    logger.error("{}: Exception thrown in call to ZoneMinderDiskUsage ('{}')", getLogIdentifier(), ex);
+                    logger.error("{}: Exception thrown in call to ZoneMinderDiskUsage: ", getLogIdentifier(), ex);
                 }
 
                 if (diskUsage == null) {
@@ -1051,8 +1032,8 @@ public class ZoneMinderServerBridgeHandler extends BaseBridgeHandler implements 
                 taskPriorityRefreshData = null;
             }
 
-            // Only start if it is not running and Priority Frequency is higher than ordinary
-            if ((taskPriorityRefreshData == null) && (refreshFrequency > 1)) {
+            // Only start if Priority Frequency is higher than ordinary
+            if (refreshFrequency > 1) {
                 taskPriorityRefreshData = startTask(refreshPriorityDataRunnable, 0, 1, TimeUnit.SECONDS);
             }
         }
@@ -1104,17 +1085,13 @@ public class ZoneMinderServerBridgeHandler extends BaseBridgeHandler implements 
      * Method to start a data refresh task.
      */
     protected ScheduledFuture<?> startTask(Runnable command, long delay, long interval, TimeUnit unit) {
-        ScheduledFuture<?> task = null;
         logger.debug("BRIDGE [{}]: Starting ZoneMinder Bridge Monitor Task. Command='{}'", getThingId(),
                 command.toString());
         if (interval == 0) {
-            return task;
+            return null;
         }
 
-        if (task == null || task.isCancelled()) {
-            task = scheduler.scheduleWithFixedDelay(command, delay, interval, unit);
-        }
-        return task;
+        return scheduler.scheduleWithFixedDelay(command, delay, interval, unit);
     }
 
     /**
@@ -1122,8 +1099,9 @@ public class ZoneMinderServerBridgeHandler extends BaseBridgeHandler implements 
      */
     protected void stopTask(ScheduledFuture<?> task) {
         try {
-            logger.debug("{}: Stopping ZoneMinder Bridge Monitor Task. Task='{}'", getLogIdentifier(), task.toString());
             if (task != null && !task.isCancelled()) {
+                logger.debug("{}: Stopping ZoneMinder Bridge Monitor Task. Task='{}'", getLogIdentifier(),
+                        task.toString());
                 task.cancel(true);
             }
         } catch (Exception ex) {
@@ -1185,14 +1163,14 @@ public class ZoneMinderServerBridgeHandler extends BaseBridgeHandler implements 
         Map<String, String> originalProperties = editProperties();
         for (String property : properties.keySet()) {
             if ((originalProperties.get(property) == null
-                    || originalProperties.get(property).equals(properties.get(property)) == false)) {
+                    || !originalProperties.get(property).equals(properties.get(property)))) {
                 update = true;
                 break;
             }
         }
 
-        if (update == true) {
-            logger.info("{}: Properties synchronised", getLogIdentifier(), getThingId());
+        if (update) {
+            logger.info("{}: Properties synchronised, Thing id: {}", getLogIdentifier(), getThingId());
             updateProperties(properties);
         }
     }

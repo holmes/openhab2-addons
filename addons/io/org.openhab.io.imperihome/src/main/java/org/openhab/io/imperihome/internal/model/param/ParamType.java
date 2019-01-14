@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2017 by the respective copyright holders.
+ * Copyright (c) 2010-2019 by the respective copyright holders.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -44,7 +44,18 @@ public enum ParamType {
     LAST_TRIP("lasttrip"),
     ACCUMULATION("Accumulation"),
     SPEED("Speed"),
-    DIRECTION("Direction");
+    DIRECTION("Direction"),
+    STOPPABLE("stopable"),
+    PULSEABLE("pulseable"),
+
+    //Thermostat parameters
+    CUR_MODE("curmode"),
+    CUR_SETPOINT("cursetpoint"),
+    CUR_TEMP("curtemp"),
+    MIN_VAL("minVal"),
+    MAX_VAL("maxVal"),
+    AVAIL_MODE("availablemodes"),
+    STEP("step");
 
     private final String apiString;
 

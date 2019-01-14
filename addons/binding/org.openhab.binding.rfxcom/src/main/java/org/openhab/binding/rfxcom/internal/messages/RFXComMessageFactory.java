@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2017 by the respective copyright holders.
+ * Copyright (c) 2010-2019 by the respective copyright holders.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -18,13 +18,17 @@ import org.openhab.binding.rfxcom.internal.exceptions.RFXComException;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComMessageNotImplementedException;
 import org.openhab.binding.rfxcom.internal.messages.RFXComBaseMessage.PacketType;
 
+/**
+ *
+ * @author Pauli Anttila - Initial contribution
+ */
 public class RFXComMessageFactory {
 
     @SuppressWarnings("serial")
-    private static final Map<PacketType, Class<? extends RFXComMessage>> messageClasses = Collections
+    private static final Map<PacketType, Class<? extends RFXComMessage>> MESSAGE_CLASSES = Collections
             .unmodifiableMap(new HashMap<PacketType, Class<? extends RFXComMessage>>() {
                 {
-                    put(PacketType.INTERFACE_CONTROL, RFXComControlMessage.class);
+                    put(PacketType.INTERFACE_CONTROL, RFXComInterfaceControlMessage.class);
                     put(PacketType.INTERFACE_MESSAGE, RFXComInterfaceMessage.class);
                     put(PacketType.TRANSMITTER_MESSAGE, RFXComTransmitterMessage.class);
                     put(PacketType.UNDECODED_RF_MESSAGE, RFXComUndecodedRFMessage.class);
@@ -34,21 +38,21 @@ public class RFXComMessageFactory {
                     put(PacketType.LIGHTING4, RFXComLighting4Message.class);
                     put(PacketType.LIGHTING5, RFXComLighting5Message.class);
                     put(PacketType.LIGHTING6, RFXComLighting6Message.class);
-                    // put(PacketType.CHIME, RFXComChimeMessage.class);
+                    put(PacketType.CHIME, RFXComChimeMessage.class);
                     // put(PacketType.FAN, RFXComFanMessage.class);
                     put(PacketType.CURTAIN1, RFXComCurtain1Message.class);
                     put(PacketType.BLINDS1, RFXComBlinds1Message.class);
                     put(PacketType.RFY, RFXComRfyMessage.class);
-                    // put(PacketType.HOME_CONFORT, RFXComHomeConfort.class);
+                    put(PacketType.HOME_CONFORT, RFXComHomeConfortMessage.class);
                     put(PacketType.SECURITY1, RFXComSecurity1Message.class);
-                    // put(PacketType.SECURITY2, RFXComSecurity2Message.class);
+                    put(PacketType.SECURITY2, RFXComSecurity2Message.class);
                     // put(PacketType.CAMERA1, RFXComCamera1Message.class);
                     // put(PacketType.REMOTE_CONTROL, RFXComRemoteControlMessage.class);
                     put(PacketType.THERMOSTAT1, RFXComThermostat1Message.class);
                     // put(PacketType.THERMOSTAT2, RFXComThermostat2Message.class);
-                    // put(PacketType.THERMOSTAT3, RFXComThermostat3Message.class);
+                    put(PacketType.THERMOSTAT3, RFXComThermostat3Message.class);
                     // put(PacketType.RADIATOR1, RFXComRadiator1Message.class);
-                    // put(PacketType.BBQ1, RFXComBBQMessage.class);
+                    put(PacketType.BBQ, RFXComBBQTemperatureMessage.class);
                     put(PacketType.TEMPERATURE_RAIN, RFXComTemperatureRainMessage.class);
                     put(PacketType.TEMPERATURE, RFXComTemperatureMessage.class);
                     put(PacketType.HUMIDITY, RFXComHumidityMessage.class);
@@ -57,9 +61,9 @@ public class RFXComMessageFactory {
                     put(PacketType.TEMPERATURE_HUMIDITY_BAROMETRIC, RFXComTemperatureHumidityBarometricMessage.class);
                     put(PacketType.RAIN, RFXComRainMessage.class);
                     put(PacketType.WIND, RFXComWindMessage.class);
-                    // put(PacketType.UV, RFXComUVMessage.class);
+                    put(PacketType.UV, RFXComUVMessage.class);
                     put(PacketType.DATE_TIME, RFXComDateTimeMessage.class);
-                    // put(PacketType.CURRENT, RFXComCurrentMessage.class);
+                    put(PacketType.CURRENT, RFXComCurrentMessage.class);
                     put(PacketType.ENERGY, RFXComEnergyMessage.class);
                     put(PacketType.CURRENT_ENERGY, RFXComCurrentEnergyMessage.class);
                     // put(PacketType.POWER, RFXComPowerMessage.class);
@@ -77,34 +81,34 @@ public class RFXComMessageFactory {
      * Command to reset RFXCOM controller.
      *
      */
-    public final static byte[] CMD_RESET = new byte[] { 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    public static final byte[] CMD_RESET = new byte[] { 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00 };
 
     /**
      * Command to get RFXCOM controller status.
      *
      */
-    public final static byte[] CMD_GET_STATUS = new byte[] { 0x0D, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+    public static final byte[] CMD_GET_STATUS = new byte[] { 0x0D, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00 };
 
     /**
      * Command to save RFXCOM controller configuration.
      *
      */
-    public final static byte[] CMD_SAVE = new byte[] { 0x0D, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    public static final byte[] CMD_SAVE = new byte[] { 0x0D, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00 };
 
     /**
      * Command to start RFXCOM receiver.
      *
      */
-    public final static byte[] CMD_START_RECEIVER = new byte[] { 0x0D, 0x00, 0x00, 0x03, 0x07, 0x00, 0x00, 0x00, 0x00,
+    public static final byte[] CMD_START_RECEIVER = new byte[] { 0x0D, 0x00, 0x00, 0x03, 0x07, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00 };
 
     public static RFXComMessage createMessage(PacketType packetType) throws RFXComException {
 
         try {
-            Class<? extends RFXComMessage> cl = messageClasses.get(packetType);
+            Class<? extends RFXComMessage> cl = MESSAGE_CLASSES.get(packetType);
             if (cl == null) {
                 throw new RFXComMessageNotImplementedException("Message " + packetType + " not implemented");
             }
@@ -115,10 +119,10 @@ public class RFXComMessageFactory {
     }
 
     public static RFXComMessage createMessage(byte[] packet) throws RFXComException {
-        PacketType packetType = PacketType.fromByte(packet[1]);
+        PacketType packetType = ByteEnumUtil.fromByte(PacketType.class, (int) packet[1]);
 
         try {
-            Class<? extends RFXComMessage> cl = messageClasses.get(packetType);
+            Class<? extends RFXComMessage> cl = MESSAGE_CLASSES.get(packetType);
             if (cl == null) {
                 throw new RFXComMessageNotImplementedException("Message " + packetType + " not implemented");
             }
